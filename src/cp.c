@@ -283,32 +283,38 @@ INT  main (INT  iArgC, PCHAR  ppcArgV[])
 {
          PCHAR      pcDest;
          PCHAR      pcSrc;
-         BOOL       bForce = LW_FALSE;
-         INT        iError = PX_ERROR;
+         INT        iC;
+         BOOL       bRecursive = LW_FALSE;
+         BOOL       bForce     = LW_FALSE;
+         INT        iError     = PX_ERROR;
          CHAR       cDstFile[MAX_FILENAME_LENGTH] = "\0";
 
 struct   stat       statFile;
 struct   stat       statDst;
 
-    if (iArgC == 3) {
-        pcDest = ppcArgV[2];
-        pcSrc  = ppcArgV[1];
 
-    } else if (iArgC == 4) {
-        if (ppcArgV[1][0] != '-') {
-            fprintf(stderr, "option error!\n");
-            return  (PX_ERROR);
-        }
-        if (lib_strchr(ppcArgV[1], 'f')) {                              /*  强行复制                    */
+    while ((iC = getopt(iArgC, ppcArgV, "rf")) != EOF) {
+        switch (iC) {
+
+        case 'r':
+            bRecursive = LW_TRUE;
+            break;
+
+        case 'f':
             bForce = LW_TRUE;
+            break;
         }
-        pcDest = ppcArgV[3];
-        pcSrc  = ppcArgV[2];
+    }
 
-    } else {
+    if (iArgC - optind < 2) {
         fprintf(stderr, "parameter error!\n");
         return  (PX_ERROR);
     }
+
+    pcSrc   = ppcArgV[optind];
+    pcDest  = ppcArgV[optind + 1];
+
+    getopt_free();
 
     if (lib_strcmp(pcSrc, pcDest) == 0) {                               /*  文件重复                    */
         fprintf(stderr, "parameter error!\n");
@@ -324,6 +330,11 @@ struct   stat       statDst;
     if (S_ISREG(statFile.st_mode)) {
         iError = __tshellFsCmdCpFile(pcSrc, pcDest, bForce);
     } else if (S_ISDIR(statFile.st_mode)) {
+        if (!bRecursive) {
+            fprintf(stderr, "cp: -r not specified!\n");
+            return  (PX_ERROR);
+        }
+
         iError = stat(pcDest, &statDst);
         if (iError == ERROR_NONE) {
             if(!S_ISDIR(statDst.st_mode)) {                             /*  目标文件不是目录            */
